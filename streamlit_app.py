@@ -20,13 +20,14 @@ keywords = st.text_area('Inserisci le Keyword Target (opzionale)')
 def fetch_sitemap(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'xml')
-    links = [loc.text for loc in soup.find_all('loc')]
+    links = [{'url': loc.text} for loc in soup.find_all('loc')]
     return links
 
 def fetch_page_content(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
-    return soup.get_text(), [a['href'] for a in soup.find_all('a', href=True)]
+    text = soup.get_text()
+    return text, [a['href'] for a in soup.find_all('a', href=True)]
 
 def extract_keywords_from_page(text):
     response = client.chat.completions.create(
@@ -41,9 +42,9 @@ def extract_keywords_from_page(text):
 
 def cluster_pages(pages):
     if len(pages) < 5:
-        return None, None  # Skip clustering if not enough samples
+        return None, None
     vectorizer = TfidfVectorizer(stop_words='english')
-    X = vectorizer.fit_transform(pages)
+    X = vectorizer.fit_transform([page['text'] for page in pages])
     model = KMeans(n_clusters=5, random_state=42)
     model.fit(X)
     return model, vectorizer
@@ -62,10 +63,15 @@ if st.button('Esegui'):
         sitemap_links = fetch_sitemap(sitemap_url)
         page_text, page_links = fetch_page_content(page_url)
         target_keywords = keywords.split('\n') if keywords else extract_keywords_from_page(page_text)
+        
+        for link in sitemap_links:
+            link['text'], _ = fetch_page_content(link['url'])
+        
         if len(sitemap_links) >= 5:
             clustered_model, vectorizer = cluster_pages(sitemap_links)
         else:
             clustered_model, vectorizer = None, None
+
         link_opportunities = find_link_opportunities(page_links, target_keywords, page_text)
         st.write("Opportunità di link trovate:")
         for link, keyword in link_opportunities:
