@@ -32,7 +32,7 @@ def fetch_page_content(url):
     return soup.get_text(), [a['href'] for a in soup.find_all('a', href=True)]
 
 def extract_keywords_from_page(text):
-    response = openai.Completion.create(
+    response = client.completions.create(
         engine="davinci",
         prompt=f"Extract relevant keywords from the following text in {language}:\n\n{text}\n\nKeywords:",
         max_tokens=50
