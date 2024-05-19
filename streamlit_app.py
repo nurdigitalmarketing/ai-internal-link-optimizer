@@ -19,7 +19,7 @@ keywords = st.text_area('Inserisci le Keyword Target (opzionale)')
 
 def fetch_sitemap(url):
     response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'lxml')
+    soup = BeautifulSoup(response.content, 'xml')
     links = [loc.text for loc in soup.find_all('loc')]
     return links
 
@@ -63,7 +63,7 @@ if st.button('Esegui'):
         page_text, page_links = fetch_page_content(page_url)
         target_keywords = keywords.split('\n') if keywords else extract_keywords_from_page(page_text)
         if len(sitemap_links) >= 5:
-            clustered_model, vectorizer = cluster_pages([page_text])
+            clustered_model, vectorizer = cluster_pages(sitemap_links)
         else:
             clustered_model, vectorizer = None, None
         link_opportunities = find_link_opportunities(page_links, target_keywords, page_text)
