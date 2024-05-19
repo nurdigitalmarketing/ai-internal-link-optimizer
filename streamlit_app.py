@@ -40,10 +40,11 @@ def extract_keywords_from_page(text):
     return [kw.strip() for kw in keywords]
 
 def cluster_pages(pages):
+    if len(pages) < 5:
+        return None, None  # Skip clustering if not enough samples
     vectorizer = TfidfVectorizer(stop_words='english')
     X = vectorizer.fit_transform(pages)
-    true_k = 5
-    model = KMeans(n_clusters=true_k, random_state=42)
+    model = KMeans(n_clusters=5, random_state=42)
     model.fit(X)
     return model, vectorizer
 
@@ -61,7 +62,10 @@ if st.button('Esegui'):
         sitemap_links = fetch_sitemap(sitemap_url)
         page_text, page_links = fetch_page_content(page_url)
         target_keywords = keywords.split('\n') if keywords else extract_keywords_from_page(page_text)
-        clustered_model, vectorizer = cluster_pages([page_text])
+        if len(sitemap_links) >= 5:
+            clustered_model, vectorizer = cluster_pages([page_text])
+        else:
+            clustered_model, vectorizer = None, None
         link_opportunities = find_link_opportunities(page_links, target_keywords, page_text)
         st.write("Opportunità di link trovate:")
         for link, keyword in link_opportunities:
