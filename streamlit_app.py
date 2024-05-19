@@ -36,7 +36,7 @@ def extract_keywords_from_page(text):
             {"role": "user", "content": text}
         ]
     )
-    keywords = response.choices[0].message["content"].strip().split(',')
+    keywords = response.choices[0].message.content.strip().split(',')
     return [kw.strip() for kw in keywords]
 
 def cluster_pages(pages):
