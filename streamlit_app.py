@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import openai
+from openai import OpenAI
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 
@@ -9,7 +9,7 @@ st.title('Automazione dei Link Interni')
 
 api_key = st.text_input("Inserisci la tua OpenAI API Key", type="password")
 if api_key:
-    openai.api_key = api_key
+    client = OpenAI(api_key=api_key)
 
 language = st.selectbox('Seleziona la Lingua', ['Italiano', 'Inglese', 'Francese', 'Spagnolo', 'Tedesco'])
 
@@ -29,7 +29,7 @@ def fetch_page_content(url):
     return soup.get_text(), [a['href'] for a in soup.find_all('a', href=True)]
 
 def extract_keywords_from_page(text):
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": f"Extract relevant keywords from the following text in {language}."},
