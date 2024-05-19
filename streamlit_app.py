@@ -5,15 +5,12 @@ import openai
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 
-# Inserisci la tua chiave API qui
-api_key = st.text_input("Inserisci la tua OpenAI API Key", type="password")
+st.title('Automazione dei Link Interni')
 
+api_key = st.text_input("Inserisci la tua OpenAI API Key", type="password")
 if api_key:
     openai.api_key = api_key
 
-st.title('Automazione dei Link Interni')
-
-# Aggiungi selettore per la lingua
 language = st.selectbox('Seleziona la Lingua', ['Italiano', 'Inglese', 'Francese', 'Spagnolo', 'Tedesco'])
 
 sitemap_url = st.text_input('Inserisci la URL della Sitemap')
@@ -32,18 +29,20 @@ def fetch_page_content(url):
     return soup.get_text(), [a['href'] for a in soup.find_all('a', href=True)]
 
 def extract_keywords_from_page(text):
-    response = client.completions.create(
-        engine="davinci",
-        prompt=f"Extract relevant keywords from the following text in {language}:\n\n{text}\n\nKeywords:",
-        max_tokens=50
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": f"Extract relevant keywords from the following text in {language}."},
+            {"role": "user", "content": text}
+        ]
     )
-    keywords = response.choices[0].text.strip().split(',')
+    keywords = response.choices[0].message["content"].strip().split(',')
     return [kw.strip() for kw in keywords]
 
 def cluster_pages(pages):
     vectorizer = TfidfVectorizer(stop_words='english')
     X = vectorizer.fit_transform(pages)
-    true_k = 5  # Number of clusters
+    true_k = 5
     model = KMeans(n_clusters=true_k, random_state=42)
     model.fit(X)
     return model, vectorizer
