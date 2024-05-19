@@ -22,7 +22,7 @@ keywords = st.text_area('Inserisci le Keyword Target (opzionale)')
 
 def fetch_sitemap(url):
     response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'xml')
+    soup = BeautifulSoup(response.content, 'lxml')
     links = [loc.text for loc in soup.find_all('loc')]
     return links
 
