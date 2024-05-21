@@ -32,12 +32,11 @@ def kmeans_clustering(texts, n_clusters=5):
     return model.labels_, model
 
 # Funzione per riassumere i testi utilizzando GPT-3.5
-def summarize_texts(texts, api_key):
-    client = OpenAI(api_key=api_key)
+def summarize_texts(texts, client_instance):
     summarized_texts = []
     
     for text in texts:
-        response = client.chat.completions.create(
+        response = client_instance.chat_completions.create(
             messages=[
                 {"role": "system", "content": "You are an assistant that helps summarize text."},
                 {"role": "user", "content": f"Summarize the following text: {text}"}
@@ -45,14 +44,12 @@ def summarize_texts(texts, api_key):
             model="gpt-3.5-turbo",
             max_tokens=300
         )
-        summarized_texts.append(response['choices'][0]['message']['content'])
+        summarized_texts.append(response.choices[0].message["content"])
     
     return summarized_texts
 
 # Funzione per generare i link interni usando GPT-4-Turbo-Preview
-def generate_internal_links(target_text, related_texts, api_key):
-    client = OpenAI(api_key=api_key)
-    
+def generate_internal_links(target_text, related_texts, client_instance):
     prompt = f"""
     List of Blog Posts:
     {related_texts}
@@ -63,7 +60,7 @@ def generate_internal_links(target_text, related_texts, api_key):
     Your task is to find internal linking opportunities in the target blog post using the list of blog posts. Please provide the improved post with internal links.
     """
 
-    response = client.chat.completions.create(
+    response = client_instance.chat_completions.create(
         messages=[
             {"role": "system", "content": "You are an assistant that helps with SEO by finding internal linking opportunities in blog posts."},
             {"role": "user", "content": prompt}
@@ -72,7 +69,7 @@ def generate_internal_links(target_text, related_texts, api_key):
         max_tokens=300000
     )
     
-    return response['choices'][0]['message']['content']
+    return response.choices[0].message["content"]
 
 # Streamlit app
 st.title("Internal Linking Automation Tool")
@@ -85,6 +82,8 @@ openai_api_key = st.text_input("Enter OpenAI API Key", type="password")
 if st.button("Run"):
     if sitemap_url and blog_prefix and target_url and openai_api_key:
         with st.spinner("Processing..."):
+            client = OpenAI(api_key=openai_api_key)
+
             # Step 1: Extract URLs from the sitemap
             urls = extract_sitemap_urls(sitemap_url)
             urls = [url for url in urls if blog_prefix in url]
@@ -106,12 +105,12 @@ if st.button("Run"):
             related_posts = [posts[i] for i in range(len(posts)) if labels[i] == target_cluster]
             
             # Step 6: Summarize the related posts
-            summarized_related_posts = summarize_texts(related_posts, openai_api_key)
+            summarized_related_posts = summarize_texts(related_posts, client)
             related_texts = "\n\n".join(summarized_related_posts)
             
             # Step 7: Use GPT-4-Turbo-Preview to generate internal links
             target_text = posts[target_index]
-            improved_post = generate_internal_links(target_text, related_texts, openai_api_key)
+            improved_post = generate_internal_links(target_text, related_texts, client)
             
             st.subheader("Original Post")
             st.write(target_text)
