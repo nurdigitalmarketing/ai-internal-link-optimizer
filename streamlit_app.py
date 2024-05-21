@@ -1,14 +1,15 @@
+import os
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
-import openai
+from openai import OpenAI
 
 # Funzione per estrarre gli URL dalla sitemap
 def extract_sitemap_urls(sitemap_url):
     response = requests.get(sitemap_url)
-    soup = BeautifulSoup(response.content, 'lxml')
+    soup = BeautifulSoup(response.content, 'xml')
     urls = []
     for loc in soup.find_all('loc'):
         urls.append(loc.text)
@@ -32,6 +33,8 @@ def kmeans_clustering(texts, n_clusters=5):
 
 # Funzione per generare i link interni usando GPT-4
 def generate_internal_links(target_text, related_texts, api_key):
+    client = OpenAI(api_key=api_key)
+    
     prompt = f"""
     List of Blog Posts:
     {related_texts}
@@ -43,14 +46,16 @@ def generate_internal_links(target_text, related_texts, api_key):
 
     Please provide the improved post with internal links.
     """
-    
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
-        max_tokens=2000
+
+    response = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": "You are an assistant that helps with SEO by finding internal linking opportunities in blog posts."},
+            {"role": "user", "content": prompt}
+        ],
+        model="gpt-4"
     )
     
-    return response.choices[0].text
+    return response['choices'][0]['message']['content']
 
 # Streamlit app
 st.title("Internal Linking Automation Tool")
