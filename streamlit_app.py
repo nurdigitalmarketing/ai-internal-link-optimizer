@@ -8,7 +8,7 @@ import openai
 # Funzione per estrarre gli URL dalla sitemap
 def extract_sitemap_urls(sitemap_url):
     response = requests.get(sitemap_url)
-    soup = BeautifulSoup(response.content, 'xml')
+    soup = BeautifulSoup(response.content, 'lxml')
     urls = []
     for loc in soup.find_all('loc'):
         urls.append(loc.text)
