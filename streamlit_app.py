@@ -49,7 +49,7 @@ def summarize_texts(texts, api_key):
     
     return summarized_texts
 
-# Funzione per generare i link interni usando GPT-4
+# Funzione per generare i link interni usando GPT-4-Turbo-Preview
 def generate_internal_links(target_text, related_texts, api_key):
     client = OpenAI(api_key=api_key)
     
@@ -68,7 +68,8 @@ def generate_internal_links(target_text, related_texts, api_key):
             {"role": "system", "content": "You are an assistant that helps with SEO by finding internal linking opportunities in blog posts."},
             {"role": "user", "content": prompt}
         ],
-        model="gpt-4"
+        model="gpt-4-turbo-preview",
+        max_tokens=300000
     )
     
     return response['choices'][0]['message']['content']
@@ -108,7 +109,7 @@ if st.button("Run"):
             summarized_related_posts = summarize_texts(related_posts, openai_api_key)
             related_texts = "\n\n".join(summarized_related_posts)
             
-            # Step 7: Use GPT-4 to generate internal links
+            # Step 7: Use GPT-4-Turbo-Preview to generate internal links
             target_text = posts[target_index]
             improved_post = generate_internal_links(target_text, related_texts, openai_api_key)
             
