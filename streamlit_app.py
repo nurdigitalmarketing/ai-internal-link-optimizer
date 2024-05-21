@@ -31,6 +31,24 @@ def kmeans_clustering(texts, n_clusters=5):
     model.fit(X)
     return model.labels_, model
 
+# Funzione per riassumere i testi utilizzando GPT-3.5
+def summarize_texts(texts, api_key):
+    client = OpenAI(api_key=api_key)
+    summarized_texts = []
+    
+    for text in texts:
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are an assistant that helps summarize text."},
+                {"role": "user", "content": f"Summarize the following text: {text}"}
+            ],
+            model="gpt-3.5-turbo",
+            max_tokens=300
+        )
+        summarized_texts.append(response['choices'][0]['message']['content'])
+    
+    return summarized_texts
+
 # Funzione per generare i link interni usando GPT-4
 def generate_internal_links(target_text, related_texts, api_key):
     client = OpenAI(api_key=api_key)
@@ -42,9 +60,7 @@ def generate_internal_links(target_text, related_texts, api_key):
     Target Blog Post:
     {target_text}
 
-    You are given a list of blog posts that contains the url, title, and description for each post, you are also provided with the extracted contents of a 'target' blog post. Your task is to find internal linking opportunities in the target blog post using the list of blog posts. While reading the target blog post you must try to find natural ways to inject relevant internal links throughout the target blog post content.
-
-    Please provide the improved post with internal links.
+    Your task is to find internal linking opportunities in the target blog post using the list of blog posts. Please provide the improved post with internal links.
     """
 
     response = client.chat.completions.create(
@@ -88,8 +104,11 @@ if st.button("Run"):
             target_cluster = labels[target_index]
             related_posts = [posts[i] for i in range(len(posts)) if labels[i] == target_cluster]
             
-            # Step 6: Use GPT-4 to generate internal links
-            related_texts = "\n\n".join(related_posts)
+            # Step 6: Summarize the related posts
+            summarized_related_posts = summarize_texts(related_posts, openai_api_key)
+            related_texts = "\n\n".join(summarized_related_posts)
+            
+            # Step 7: Use GPT-4 to generate internal links
             target_text = posts[target_index]
             improved_post = generate_internal_links(target_text, related_texts, openai_api_key)
             
