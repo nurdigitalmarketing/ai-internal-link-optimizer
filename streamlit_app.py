@@ -20,7 +20,7 @@ def scrape_sitemap(sitemap_url, language):
         headers = {"Accept-Language": language}
         response = requests.get(sitemap_url, headers=headers)
         response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'xml')
+        soup = BeautifulSoup(response.content, 'xml', parser='lxml')
         urls = [loc.text for loc in soup.find_all('loc')]
         pages = []
 
@@ -128,7 +128,7 @@ def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, 
 
 # Interfaccia Streamlit
 def main():
-    st.title("Internal Linking Automation Tool")
+    st.title("Ottimizzazione dei Link Interni")
 
     st.markdown("""
     ### Istruzioni
