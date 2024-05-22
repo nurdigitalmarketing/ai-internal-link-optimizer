@@ -130,14 +130,14 @@ def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, 
 def main():
 
     # Crea una riga con 3 colonne
-col1, col2 = st.columns([1, 7])
+    col1, col2 = st.columns([1, 7])
 
-# Colonna per l'immagine (a sinistra)
+    # Colonna per l'immagine (a sinistra)
     with col1:
         # Assicurati di avere un'immagine nel percorso specificato o passa un URL diretto
         st.image("https://raw.githubusercontent.com/nurdigitalmarketing/previsione-del-traffico-futuro/9cdbf5d19d9132129474936c137bc8de1a67bd35/Nur-simbolo-1080x1080.png", width=80)
 
-# Colonna per il titolo e il testo "by NUR® Digital Marketing" (al centro)
+    # Colonna per il titolo e il testo "by NUR® Digital Marketing" (al centro)
     with col2:
         st.title('Internal Linking Automation Tool')
         st.markdown('###### by [NUR® Digital Marketing](https://www.nur.it)')
