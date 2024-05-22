@@ -1,72 +1,68 @@
+
 # Internal Linking Automation Tool
 
-## Descrizione
+Internal Linking Optimization Tool is a web application built with Streamlit that allows you to scrape a website's sitemap, perform semantic clustering on the pages, and optimize internal links within a target blog post. This tool is ideal for enhancing the SEO of your website by automating the process of creating relevant internal links.
 
-Questo strumento avanzato di ottimizzazione dei link interni è stato sviluppato per aiutarti a migliorare la SEO del tuo sito web automatizzando il processo di creazione di link interni rilevanti tra i tuoi articoli di blog. Utilizzando tecnologie all'avanguardia come i modelli di linguaggio OpenAI, lo strumento estrae, analizza e inserisce link interni nei tuoi post in modo naturale e fluido.
+## Features
 
-## Funzionalità
+- Scrape the website's sitemap and retrieve all pages, including their title and meta description
+- Perform semantic clustering on the pages to find the most relevant ones for the target blog post
+- Pass the shortlisted relevant pages to an LLM (Language Model) along with the target blog post to inject internal links where relevant
 
-1. **Scraping della Sitemap**: Recupera tutte le pagine della tua sitemap, inclusi titoli e descrizioni.
-2. **Clustering Semantico**: Utilizza tecniche di clustering per trovare le pagine più rilevanti per il tuo post target.
-3. **Ottimizzazione dei Link Interni**: Usa un modello di linguaggio per analizzare il post target e le pagine rilevanti, inserendo link interni dove appropriato.
+## Installation
 
-## Requisiti
+1. Clone the repository:
+   ```sh
+   git clone https://github.com/yourusername/internal-linking-optimization-tool.git
+   cd internal-linking-optimization-tool
+   ```
 
-- Python 3.8+
-- Le seguenti librerie Python:
+2. Install the required packages:
+   ```sh
+   pip install -r requirements.txt
+   ```
 
-```plaintext
-streamlit==1.15.0
-requests==2.28.1
-beautifulsoup4==4.11.1
-sentence-transformers==2.2.2
-openai==0.27.0
-pandas==1.3.5
-scikit-learn==1.0.2
-```
+## Usage
 
-## Installazione
+1. Run the Streamlit app:
+   ```sh
+   streamlit run app.py
+   ```
 
-1. Clona il repository:
+2. Open your web browser and go to `http://localhost:8501`.
 
-    ```sh
-    git clone https://github.com/tuo-username/tuo-repo.git
-    cd tuo-repo
-    ```
+3. Follow the instructions on the web interface:
+   - Select the language for the scraping and analysis.
+   - Enter your OpenAI API key.
+   - Select the desired OpenAI model.
+   - Set the temperature for the model's behavior.
+   - Enter the URL of the sitemap.
+   - Enter the blog prefix (optional).
+   - Enter the URL of the target blog post.
+   - Click on "Optimize Internal Links" to start the process.
 
-2. Crea un ambiente virtuale e attivalo:
+## Dependencies
 
-    ```sh
-    python -m venv venv
-    source venv/bin/activate  # Su Windows usa `venv\Scripts\activate`
-    ```
+- [Streamlit](https://streamlit.io)
+- [Requests](https://pypi.org/project/requests/)
+- [BeautifulSoup4](https://pypi.org/project/beautifulsoup4/)
+- [Sentence Transformers](https://pypi.org/project/sentence-transformers/)
+- [OpenAI](https://pypi.org/project/openai/)
+- [Pandas](https://pypi.org/project/pandas/)
+- [Scikit-learn](https://pypi.org/project/scikit-learn/)
 
-3. Installa le dipendenze:
+## Contributing
 
-    ```sh
-    pip install -r requirements.txt
-    ```
+1. Fork the repository.
+2. Create a new branch: `git checkout -b my-feature-branch`
+3. Make your changes and commit them: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin my-feature-branch`
+5. Open a pull request.
 
-## Utilizzo
+## License
 
-1. Esegui il file `app.py` con Streamlit:
+This project is licensed under the MIT License.
 
-    ```sh
-    streamlit run app.py
-    ```
+## Acknowledgments
 
-2. Segui le istruzioni nell'interfaccia per:
-    - Selezionare la lingua
-    - Inserire la tua API Key di OpenAI
-    - Selezionare il modello di OpenAI
-    - Impostare la temperatura
-    - Inserire l'URL della Sitemap
-    - Inserire il prefisso dei Blog (opzionale)
-    - Inserire l'URL del post target
-
-3. Clicca su "Ottimizza Link Interni" per avviare il processo.
-
-## Contatti
-
-Creato da **NUR© Digital Marketing**. Per ulteriori informazioni, visita il nostro [sito web](https://www.nur.it).
-
+Created by **NUR© Digital Marketing**. For more information, visit our [website](https://www.nur.it).
