@@ -65,4 +65,4 @@ This project is licensed under the MIT License.
 
 ## Acknowledgments
 
-Created by **NUR© Digital Marketing**. For more information, visit our [website](https://www.nur.it).
+Created by **NUR® Digital Marketing**. For more information, visit our [website](https://www.nur.it).
