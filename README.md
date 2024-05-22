@@ -1,1 +1,1 @@
-# ai-internal-link-optimizer
+# Internal Linking Automation Tool
