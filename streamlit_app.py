@@ -20,7 +20,7 @@ def scrape_sitemap(sitemap_url, language):
         headers = {"Accept-Language": language}
         response = requests.get(sitemap_url, headers=headers)
         response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'xml', parser='lxml')
+        soup = BeautifulSoup(response.content, 'xml')
         urls = [loc.text for loc in soup.find_all('loc')]
         pages = []
 
