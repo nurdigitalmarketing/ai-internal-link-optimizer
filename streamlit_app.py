@@ -128,19 +128,31 @@ def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, 
 
 # Interfaccia Streamlit
 def main():
-    st.title("Ottimizzazione dei Link Interni")
 
-    st.markdown("""
-    ### Istruzioni
-    1. **Seleziona la lingua**: Scegli la lingua desiderata per il scraping e l'analisi.
-    2. **Inserisci la tua API Key di OpenAI**: Fornisci la tua chiave API in modo sicuro.
-    3. **Seleziona il modello di OpenAI**: Scegli il modello GPT desiderato tra quelli disponibili.
-    4. **Seleziona la temperatura**: Imposta la temperatura per il comportamento del modello.
-    5. **Inserisci l'URL della Sitemap**: Fornisci l'URL della sitemap del sito web da analizzare.
-    6. **Inserisci il prefisso dei Blog**: Fornisci il prefisso dei blog per filtrare gli URL (opzionale).
-    7. **Inserisci l'URL del post target**: Fornisci l'URL del post target per l'ottimizzazione dei link interni.
-    8. **Ottimizza Link Interni**: Clicca sul pulsante per avviare il processo di ottimizzazione.
-    """)
+    # Crea una riga con 3 colonne
+col1, col2 = st.columns([1, 7])
+
+# Colonna per l'immagine (a sinistra)
+    with col1:
+        # Assicurati di avere un'immagine nel percorso specificato o passa un URL diretto
+        st.image("https://raw.githubusercontent.com/nurdigitalmarketing/previsione-del-traffico-futuro/9cdbf5d19d9132129474936c137bc8de1a67bd35/Nur-simbolo-1080x1080.png", width=80)
+
+# Colonna per il titolo e il testo "by NUR® Digital Marketing" (al centro)
+    with col2:
+        st.title('Internal Linking Automation Tool')
+        st.markdown('###### by [NUR® Digital Marketing](https://www.nur.it)')
+
+    with st.expander("Istruzioni"):
+        st.markdown("""
+        1. **Seleziona la lingua**: Scegli la lingua desiderata per il scraping e l'analisi.
+        2. **Inserisci la tua API Key di OpenAI**: Fornisci la tua chiave API in modo sicuro.
+        3. **Seleziona il modello di OpenAI**: Scegli il modello GPT desiderato tra quelli disponibili.
+        4. **Seleziona la temperatura**: Imposta la temperatura per il comportamento del modello.
+        5. **Inserisci l'URL della Sitemap**: Fornisci l'URL della sitemap del sito web da analizzare.
+        6. **Inserisci il prefisso dei Blog**: Fornisci il prefisso dei blog per filtrare gli URL (opzionale).
+        7. **Inserisci l'URL del post target**: Fornisci l'URL del post target per l'ottimizzazione dei link interni.
+        8. **Ottimizza Link Interni**: Clicca sul pulsante per avviare il processo di ottimizzazione.
+        """)
 
     # Selezione della lingua
     language = st.selectbox("Seleziona la lingua", ["en", "it", "fr", "de", "es", "pt"])
