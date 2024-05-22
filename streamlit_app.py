@@ -128,7 +128,7 @@ def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, 
 
 # Interfaccia Streamlit
 def main():
-    st.title("Ottimizzazione dei Link Interni")
+    st.title("Internal Linking Automation Tool")
 
     st.markdown("""
     ### Istruzioni
