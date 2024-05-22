@@ -158,7 +158,7 @@ def main():
     language = st.selectbox("Seleziona la lingua", ["en", "it", "fr", "de", "es", "pt"])
     
     # Inserimento della chiave API di OpenAI
-    openai_api_key = st.text_input("Inserisci la tua API Key di [OpenAI](https://platform.openai.com/api-keys)", type="password")
+    openai_api_key = st.text_input("Inserisci la tua API Key di OpenAI [(le trovi qui)](https://platform.openai.com/api-keys)", type="password")
     
     # Selezione del modello di OpenAI
     model = st.selectbox("Seleziona il modello di OpenAI", [
