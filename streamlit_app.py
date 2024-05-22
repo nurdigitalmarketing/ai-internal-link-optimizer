@@ -1,121 +1,186 @@
-import os
+# File: app.py
+
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sentence_transformers import SentenceTransformer, util
+import openai
+import pandas as pd
 from sklearn.cluster import KMeans
-from openai import OpenAI
+import json
+import logging
 
-# Funzione per estrarre gli URL dalla sitemap
-def extract_sitemap_urls(sitemap_url):
-    response = requests.get(sitemap_url)
-    soup = BeautifulSoup(response.content, 'xml')
-    urls = []
-    for loc in soup.find_all('loc'):
-        urls.append(loc.text)
-    return urls
+# Configurazione del logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Funzione per eseguire lo scraping del contenuto principale di una pagina web
-def scrape_webpage(url):
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    paragraphs = soup.find_all('p')
-    text = " ".join([para.get_text() for para in paragraphs])
-    return text
+# Funzione per scraping della sitemap con caching
+@st.cache_data
+def scrape_sitemap(sitemap_url, language):
+    try:
+        headers = {"Accept-Language": language}
+        response = requests.get(sitemap_url, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'xml')
+        urls = [loc.text for loc in soup.find_all('loc')]
+        pages = []
 
-# Funzione per eseguire il clustering K-Means sui testi
-def kmeans_clustering(texts, n_clusters=5):
-    vectorizer = TfidfVectorizer(stop_words='english')
-    X = vectorizer.fit_transform(texts)
-    model = KMeans(n_clusters=n_clusters, random_state=42)
-    model.fit(X)
-    return model.labels_, model
+        for url in urls:
+            page_response = requests.get(url, headers=headers)
+            page_response.raise_for_status()
+            page_soup = BeautifulSoup(page_response.content, 'html.parser')
+            title = page_soup.title.string if page_soup.title else 'No title'
+            meta_desc = page_soup.find('meta', attrs={'name': 'description'})
+            meta_desc = meta_desc['content'] if meta_desc else 'No description'
+            pages.append({'url': url, 'title': title, 'description': meta_desc})
+        
+        return pages
+    except requests.RequestException as e:
+        logging.error(f"Errore durante lo scraping della sitemap: {e}")
+        st.error("Errore durante lo scraping della sitemap. Controlla l'URL e riprova.")
+        return []
 
-# Funzione per riassumere i testi utilizzando GPT-3.5
-def summarize_texts(texts, client_instance):
-    summarized_texts = []
-    
-    for text in texts:
-        response = client_instance.chat_completions.create(
-            messages=[
-                {"role": "system", "content": "You are an assistant that helps summarize text."},
-                {"role": "user", "content": f"Summarize the following text: {text}"}
-            ],
-            model="gpt-3.5-turbo",
-            max_tokens=300
+# Funzione per scraping del contenuto della pagina con caching
+@st.cache_data
+def scrape_page_content(url, language):
+    try:
+        headers = {"Accept-Language": language}
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        return soup.get_text()
+    except requests.RequestException as e:
+        logging.error(f"Errore durante lo scraping del contenuto della pagina: {e}")
+        st.error("Errore durante lo scraping del contenuto della pagina. Controlla l'URL e riprova.")
+        return ""
+
+# Funzione per clustering semantico con caching
+@st.cache_data
+def semantic_clustering(pages, target_post, model_name='sentence-transformers/all-MiniLM-L6-v2', n_clusters=5):
+    try:
+        model = SentenceTransformer(model_name)
+        embeddings = [model.encode(page['title'] + ' ' + page['description'], convert_to_tensor=True) for page in pages]
+        target_embedding = model.encode(target_post, convert_to_tensor=True)
+        similarities = [util.pytorch_cos_sim(target_embedding, emb).item() for emb in embeddings]
+
+        # Clustering
+        kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+        clusters = kmeans.fit_predict(embeddings)
+
+        df = pd.DataFrame(pages)
+        df['cluster'] = clusters
+        target_cluster = kmeans.predict([target_embedding])[0]
+        relevant_pages = df[df['cluster'] == target_cluster]
+
+        return relevant_pages.to_dict('records')
+    except Exception as e:
+        logging.error(f"Errore durante il clustering semantico: {e}")
+        st.error("Errore durante il clustering semantico.")
+        return []
+
+# Funzione per ottimizzazione dei link interni
+def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, temperature):
+    try:
+        openai.api_key = openai_api_key
+        pages_text = "\n".join([f"{page['title']}\n{page['description']}\n{page['url']}" for page in relevant_pages])
+        prompt = f"""
+        List of Blog Posts:
+        {pages_text}
+
+        Target Blog Post:
+        {target_post}
+
+        You are given a list of blog posts that contains the url, title, and description for each post, you are also provided with the extracted contents of a 'target' blog post. Your task is to find internal linking opportunities in the target blog post using the list of blog posts. While reading the target blog post You must try to find natural ways to inject relevant internal links throughout the target blog post content.
+
+        For example if the post is talking about topic X in one of the sections and you notice that there is a post in the provided list of blog posts that is relevant to it, you can add something like:
+        <a href="https://example.com/blog/x">you can learn more about X here</a>
+        try to maintain the same tone while making these minor changes.
+
+        The links should be spaced out and naturally injected where it is best suited without feeling forced, here is a bad and good example of what I mean.
+
+        Bad (too many links next to each other):
+
+        I've written about cheese <a href="https://example.com/page1">so</a> <a href="https://example.com/page2">many</a> <a href="https://example.com/page3">times</a> <a href="https://example.com/page4">this</a> <a href="https://example.com/page5">year</a>.
+
+        Better (links are spaced out with context):
+
+        I've written about cheese so many times this year: who can forget the <a href="https://example.com/blue-cheese-vs-gorgonzola">controversy over blue cheese and gorgonzola</a>, the <a href="https://example.com/worlds-oldest-brie">world's oldest brie</a> piece that won the Cheesiest Research Medal, the epic retelling of <a href="https://example.com/the-lost-cheese">The Lost Cheese</a>, and my personal favorite, <a href="https://example.com/boy-and-his-cheese">A Boy and His Cheese: a story of two unlikely friends</a>.
+
+        Of course this is just an example of how you would naturally inject natural link, the blog post has nothing to do with cheese.
+
+        Don't force links where they are not relevant, if you can't find any relevant links to inject just respond with saying so. Otherwise your response should be the target post with the internal links injected. Please maintain the exact same body of text but you can change a wording a bit in the sections you want to fit an internal link for a more natural read.
+        """
+        
+        system_message = "You are an SEO consultant that specializes in internal linking. Your task will be to naturally inject internal links to a given blog post."
+
+        response = openai.Completion.create(
+            model=model,
+            prompt=prompt,
+            max_tokens=1500,
+            temperature=temperature
         )
-        summarized_texts.append(response.choices[0].message["content"])
+
+        optimized_post = response.choices[0].text.strip()
+        return optimized_post
+    except Exception as e:
+        logging.error(f"Errore durante l'ottimizzazione dei link interni: {e}")
+        st.error("Errore durante l'ottimizzazione dei link interni.")
+        return ""
+
+# Interfaccia Streamlit
+def main():
+    st.title("Ottimizzazione dei Link Interni")
+
+    st.markdown("""
+    ### Istruzioni
+    1. **Seleziona la lingua**: Scegli la lingua desiderata per il scraping e l'analisi.
+    2. **Inserisci la tua API Key di OpenAI**: Fornisci la tua chiave API in modo sicuro.
+    3. **Seleziona il modello di OpenAI**: Scegli il modello GPT desiderato tra quelli disponibili.
+    4. **Seleziona la temperatura**: Imposta la temperatura per il comportamento del modello.
+    5. **Inserisci l'URL della Sitemap**: Fornisci l'URL della sitemap del sito web da analizzare.
+    6. **Inserisci il prefisso dei Blog**: Fornisci il prefisso dei blog per filtrare gli URL (opzionale).
+    7. **Inserisci l'URL del post target**: Fornisci l'URL del post target per l'ottimizzazione dei link interni.
+    8. **Ottimizza Link Interni**: Clicca sul pulsante per avviare il processo di ottimizzazione.
+    """)
+
+    # Selezione della lingua
+    language = st.selectbox("Seleziona la lingua", ["en", "it", "fr", "de", "es", "pt"])
     
-    return summarized_texts
-
-# Funzione per generare i link interni usando GPT-4-Turbo-Preview
-def generate_internal_links(target_text, related_texts, client_instance):
-    prompt = f"""
-    List of Blog Posts:
-    {related_texts}
-
-    Target Blog Post:
-    {target_text}
-
-    Your task is to find internal linking opportunities in the target blog post using the list of blog posts. Please provide the improved post with internal links.
-    """
-
-    response = client_instance.chat_completions.create(
-        messages=[
-            {"role": "system", "content": "You are an assistant that helps with SEO by finding internal linking opportunities in blog posts."},
-            {"role": "user", "content": prompt}
-        ],
-        model="gpt-4-turbo-preview",
-        max_tokens=300000
-    )
+    # Inserimento della chiave API di OpenAI
+    openai_api_key = st.text_input("Inserisci la tua API Key di OpenAI", type="password")
     
-    return response.choices[0].message["content"]
+    # Selezione del modello di OpenAI
+    model = st.selectbox("Seleziona il modello di OpenAI", [
+        "gpt-3.5-turbo-16k", 
+        "gpt-3.5-turbo", 
+        "gpt-3.5-turbo-1106", 
+        "gpt-4-turbo", 
+        "gpt-4"
+    ])
+    
+    # Selezione della temperatura
+    temperature = st.slider("Seleziona la temperatura", 0.0, 1.0, 0.2)
+    
+    # Input URL
+    sitemap_url = st.text_input("Inserisci l'URL della Sitemap")
+    blog_prefix = st.text_input("Inserisci il prefisso dei Blog")
+    target_post_url = st.text_input("Inserisci l'URL del post target")
+    
+    if st.button("Ottimizza Link Interni"):
+        with st.spinner("Scraping della Sitemap..."):
+            pages = scrape_sitemap(sitemap_url, language)
+        
+        target_post = scrape_page_content(target_post_url, language)
+        
+        with st.spinner("Clustering Semantico..."):
+            relevant_pages = semantic_clustering(pages, target_post)
+        
+        with st.spinner("Ottimizzazione dei Link Interni..."):
+            optimized_post = optimize_internal_links(relevant_pages, target_post, openai_api_key, model, temperature)
+        
+        st.subheader("Post Ottimizzato")
+        st.write(optimized_post)
+        st.subheader("Post Originale")
+        st.write(target_post)
 
-# Streamlit app
-st.title("Internal Linking Automation Tool")
-
-sitemap_url = st.text_input("Enter the Sitemap URL")
-blog_prefix = st.text_input("Enter the Blog Prefix (e.g., '/blog/')")
-target_url = st.text_input("Enter the Target Blog Post URL")
-openai_api_key = st.text_input("Enter OpenAI API Key", type="password")
-
-if st.button("Run"):
-    if sitemap_url and blog_prefix and target_url and openai_api_key:
-        with st.spinner("Processing..."):
-            client = OpenAI(api_key=openai_api_key)
-
-            # Step 1: Extract URLs from the sitemap
-            urls = extract_sitemap_urls(sitemap_url)
-            urls = [url for url in urls if blog_prefix in url]
-            
-            # Step 2: Scrape content for each URL
-            posts = [scrape_webpage(url) for url in urls]
-            
-            # Step 3: Include the target post in the list if not present
-            if target_url not in urls:
-                urls.append(target_url)
-                posts.append(scrape_webpage(target_url))
-            
-            # Step 4: Perform K-Means clustering
-            labels, model = kmeans_clustering(posts)
-            
-            # Step 5: Filter for the cluster containing the target post
-            target_index = urls.index(target_url)
-            target_cluster = labels[target_index]
-            related_posts = [posts[i] for i in range(len(posts)) if labels[i] == target_cluster]
-            
-            # Step 6: Summarize the related posts
-            summarized_related_posts = summarize_texts(related_posts, client)
-            related_texts = "\n\n".join(summarized_related_posts)
-            
-            # Step 7: Use GPT-4-Turbo-Preview to generate internal links
-            target_text = posts[target_index]
-            improved_post = generate_internal_links(target_text, related_texts, client)
-            
-            st.subheader("Original Post")
-            st.write(target_text)
-            
-            st.subheader("Improved Post with Internal Links")
-            st.write(improved_post)
-    else:
-        st.error("Please fill in all fields")
+if __name__ == "__main__":
+    main()
