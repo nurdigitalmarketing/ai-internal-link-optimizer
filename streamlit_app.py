@@ -112,7 +112,7 @@ def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, 
         
         system_message = "You are an SEO consultant that specializes in internal linking. Your task will be to naturally inject internal links to a given blog post."
 
-        response = openai.Completion.create(
+        response = openai.Completion.create_completion(
             model=model,
             prompt=prompt,
             max_tokens=1500,
@@ -121,7 +121,7 @@ def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, 
 
         optimized_post = response.choices[0].text.strip()
         return optimized_post
-    except Exception as e:
+    except openai.OpenAIError as e:
         logging.error(f"Errore durante l'ottimizzazione dei link interni: {e}")
         st.error("Errore durante l'ottimizzazione dei link interni.")
         return ""
