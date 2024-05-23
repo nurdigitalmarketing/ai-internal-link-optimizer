@@ -1,5 +1,3 @@
-# File: app.py
-
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
@@ -71,14 +69,14 @@ def semantic_clustering(pages, target_post, model_name='sentence-transformers/al
         target_cluster = kmeans.predict([target_embedding])[0]
         relevant_pages = df[df['cluster'] == target_cluster]
 
-        return relevant_pages.to_dict('records')
+        return relevant_pages, target_cluster, similarities
     except Exception as e:
         logging.error(f"Errore durante il clustering semantico: {e}")
         st.error("Errore durante il clustering semantico.")
-        return []
+        return [], None, []
 
-# Funzione per ottimizzazione dei link interni
-def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, temperature):
+# Funzione per ottimizzazione dei link interni con anteprima
+def optimize_internal_links(relevant_pages, target_post, target_cluster, similarities, openai_api_key, model, temperature):
     try:
         openai.api_key = openai_api_key
         pages_text = "\n".join([f"{page['title']}\n{page['description']}\n{page['url']}" for page in relevant_pages])
@@ -89,28 +87,14 @@ def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, 
         Target Blog Post:
         {target_post}
 
-        You are given a list of blog posts that contains the url, title, and description for each post, you are also provided with the extracted contents of a 'target' blog post. Your task is to find internal linking opportunities in the target blog post using the list of blog posts. While reading the target blog post You must try to find natural ways to inject relevant internal links throughout the target blog post content.
+        You are given a list of blog posts that contains the url, title, and description for each post, you are also provided with the extracted contents of a 'target' blog post. Your task is to find internal linking opportunities in the target blog post using the list of blog posts. While reading the target blog post, highlight sections where you would naturally inject internal links and provide the suggested link in the format: [suggested text](suggested URL). Maintain the same tone and style as the target post.
 
-        For example if the post is talking about topic X in one of the sections and you notice that there is a post in the provided list of blog posts that is relevant to it, you can add something like:
-        <a href="https://example.com/blog/x">you can learn more about X here</a>
-        try to maintain the same tone while making these minor changes.
+        For example, if a section of the target post mentions 'cheese', and there is a relevant post in the list about different types of cheese, you can highlight that section and suggest a link like this: "There are so many types of cheese to explore, [from fresh mozzarella to aged cheddar](https://example.com/cheese-types)."
 
-        The links should be spaced out and naturally injected where it is best suited without feeling forced, here is a bad and good example of what I mean.
-
-        Bad (too many links next to each other):
-
-        I've written about cheese <a href="https://example.com/page1">so</a> <a href="https://example.com/page2">many</a> <a href="https://example.com/page3">times</a> <a href="https://example.com/page4">this</a> <a href="https://example.com/page5">year</a>.
-
-        Better (links are spaced out with context):
-
-        I've written about cheese so many times this year: who can forget the <a href="https://example.com/blue-cheese-vs-gorgonzola">controversy over blue cheese and gorgonzola</a>, the <a href="https://example.com/worlds-oldest-brie">world's oldest brie</a> piece that won the Cheesiest Research Medal, the epic retelling of <a href="https://example.com/the-lost-cheese">The Lost Cheese</a>, and my personal favorite, <a href="https://example.com/boy-and-his-cheese">A Boy and His Cheese: a story of two unlikely friends</a>.
-
-        Of course this is just an example of how you would naturally inject natural link, the blog post has nothing to do with cheese.
-
-        Don't force links where they are not relevant, if you can't find any relevant links to inject just respond with saying so. Otherwise your response should be the target post with the internal links injected. Please maintain the exact same body of text but you can change a wording a bit in the sections you want to fit an internal link for a more natural read.
+        Space out the links and ensure they are contextually relevant. Avoid forcing links where they don't fit naturally. If you can't find relevant linking opportunities, indicate that no links are necessary. Your response should be the target post with highlighted sections and suggested links.
         """
         
-        system_message = "You are an SEO consultant that specializes in internal linking. Your task will be to naturally inject internal links to a given blog post."
+        system_message = "You are an SEO consultant that specializes in internal linking. Your task is to highlight sections in the target post where internal links can be injected and provide the suggested link."
 
         response = openai.Completion.create(
             model=model,
@@ -120,15 +104,24 @@ def optimize_internal_links(relevant_pages, target_post, openai_api_key, model, 
         )
 
         optimized_post = response.choices[0].text.strip()
-        return optimized_post
+
+        # Estrai i link suggeriti dal post ottimizzato
+        suggested_links = []
+        for line in optimized_post.splitlines():
+            if line.startswith('['):
+                link_text = line[line.index('[') + 1:line.index(']')]
+                link_url = line[line.index('(') + 1:line.index(')')]
+                suggested_links.append({'text': link_text, 'url': link_url})
+
+        return optimized_post, suggested_links, similarities
+
     except Exception as e:
         logging.error(f"Errore durante l'ottimizzazione dei link interni: {e}")
         st.error("Errore durante l'ottimizzazione dei link interni.")
-        return ""
+        return "", [], []
 
 # Interfaccia Streamlit
 def main():
-
     # Crea una riga con 3 colonne
     col1, col2 = st.columns([1, 7])
 
@@ -184,13 +177,20 @@ def main():
         target_post = scrape_page_content(target_post_url, language)
         
         with st.spinner("Clustering Semantico..."):
-            relevant_pages = semantic_clustering(pages, target_post)
+            relevant_pages, target_cluster, similarities = semantic_clustering(pages, target_post)
         
         with st.spinner("Ottimizzazione dei Link Interni..."):
-            optimized_post = optimize_internal_links(relevant_pages, target_post, openai_api_key, model, temperature)
+            optimized_post, suggested_links, similarities = optimize_internal_links(relevant_pages, target_post, target_cluster, similarities, openai_api_key, model, temperature)
         
-        st.subheader("Post Ottimizzato")
-        st.write(optimized_post)
+        st.subheader("Post Ottimizzato con Link Suggeriti")
+        st.markdown(optimized_post, unsafe_allow_html=True)
+        
+        st.subheader("Link Suggeriti")
+        if suggested_links:
+            st.write(suggested_links)
+        else:
+            st.write("Nessun link suggerito.")
+        
         st.subheader("Post Originale")
         st.write(target_post)
 
